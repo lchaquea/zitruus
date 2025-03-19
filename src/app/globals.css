@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 12, 14, 17;
+  --background-end-rgb: 17, 20, 25;
+}
+
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--background-start-rgb)),
+    rgb(var(--background-end-rgb))
+  );
+  min-height: 100vh;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(var(--background-start-rgb));
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ffb448;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #f5a022;
+}
+
+/* Grid Pattern Background */
+.bg-grid-pattern {
+  background-image: linear-gradient(to right, #1e293b 1px, transparent 1px),
+    linear-gradient(to bottom, #1e293b 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Animations */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Glass Effect */
+.glass {
+  background: rgba(30, 41, 59, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Language-specific styles */
+html[data-language="es"] .text-xs {
+  font-size: 0.7rem; /* Slightly smaller for Spanish which tends to have longer words */
+}
+
+html[data-language="es"] .text-sm {
+  font-size: 0.8rem;
+}
+
+/* Adjust spacing for longer Spanish text in navigation */
+html[data-language="es"] .space-x-4 > * + * {
+  margin-left: 0.75rem;
+}
+
+/* Adjust button padding for Spanish text */
+html[data-language="es"] .px-6 {
+  padding-left: 1.75rem;
+  padding-right: 1.75rem;
+}
+
+/* Ensure dropdown menus have enough width for Spanish text */
+html[data-language="es"] .w-48 {
+  width: 14rem;
+} 
