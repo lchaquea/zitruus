@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, DollarSign, Shield, AlertTriangle } from 'lucide-react';
 import TestimonialBubble from '../TestimonialBubble';
@@ -11,13 +11,7 @@ interface HiringChallengesProps {
     name: string;
     role: string;
     testimonial: string;
-    position: {
-      top?: string;
-      left?: string;
-      right?: string;
-      bottom?: string;
-      position: string;
-    };
+    position: CSSProperties;
   }>;
 }
 
@@ -192,11 +186,12 @@ const HiringChallenges = ({ testimonials = [] }: HiringChallengesProps) => {
         <div className="absolute inset-0 overflow-visible" style={{ zIndex: 999 }}>
           {testimonials.map((testimonial, index) => (
             <div key={index} style={{
+              position: 'absolute',
               ...testimonial.position,
               zIndex: 999,
               transform: index === 1 ? 'translateY(0)' : undefined,
               marginTop: index === 1 ? '50px' : undefined
-            }}>
+            } as CSSProperties}>
               <TestimonialBubble
                 imageSrc={testimonial.imageSrc}
                 name={testimonial.name}

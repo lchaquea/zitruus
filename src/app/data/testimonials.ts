@@ -1,15 +1,12 @@
+import { CSSProperties } from 'react';
+
 export interface Testimonial {
   id: number;
   imageSrc: string;
   name: string;
   role: string;
   testimonial: string;
-  position: {
-    top?: string;
-    left?: string;
-    right?: string;
-    bottom?: string;
-  };
+  position: CSSProperties;
   label?: string;
 }
 
@@ -20,7 +17,7 @@ export const testimonials: Testimonial[] = [
     name: 'Juan F.',
     role: 'Ops Lead',
     testimonial: "The hiring process was straightforward, and Zitruus team made sure everything was set up for success. I've been able to focus on my work without worrying about contracts or payments.",
-    position: { top: '25%', left: '5%' },
+    position: { position: 'absolute', top: '25%', left: '5%' },
     label: 'Click me'
   },
   {
@@ -28,18 +25,16 @@ export const testimonials: Testimonial[] = [
     imageSrc: '/assets/images/team-2.svg',
     name: 'Natalia A.',
     role: 'Paid Media Specialist',
-    testimonial: "Finding a stable remote job that fits my skills wasn't easy, but Zitruus connected me with the right company. It's a good balance of challenge and support.",
-    position: { top: '40%', right: '8%' },
-    label: 'Click me'
+    testimonial: "Working with Zitruus has been a game-changer. The onboarding was smooth, and I've found a perfect balance between challenging work and great compensation.",
+    position: { position: 'absolute', top: '45%', right: '10%' }
   },
   {
     id: 3,
     imageSrc: '/assets/images/team-3.svg',
-    name: 'Juan F.',
-    role: 'Ops Lead',
-    testimonial: "What I appreciate most is how well everything is handled behind the scenes. I can focus on my job knowing that HR, contracts, and payments are in Zitruus's hands.",
-    position: { top: '100%', left: '12%' },
-    label: 'Click me'
+    name: 'Carlos M.',
+    role: 'Senior Developer',
+    testimonial: "I was skeptical about remote work, but Zitruus made the transition seamless. Their support team is always there when I need them, and the work-life balance is fantastic.",
+    position: { position: 'absolute', bottom: '15%', left: '20%' }
   },
   {
     id: 4,
