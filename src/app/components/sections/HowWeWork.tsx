@@ -1,7 +1,7 @@
 'use client';
 
 // Testimonial bubbles removed for cleaner UI
-import React, { useState } from 'react';
+import React, { useState, CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { CheckCircle, Users, FileCheck, Rocket } from 'lucide-react';
@@ -15,13 +15,7 @@ interface HowItWorksProps {
     name: string;
     role: string;
     testimonial: string;
-    position: {
-      top?: string;
-      left?: string;
-      right?: string;
-      bottom?: string;
-      position: string;
-    };
+    position: CSSProperties;
   }>;
 }
 
@@ -83,7 +77,10 @@ export default function HowItWorks({ testimonials = [] }: HowItWorksProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Add testimonial bubbles */}
         {testimonials.map((testimonial, index) => (
-          <div key={index} style={testimonial.position}>
+          <div key={index} style={{
+            position: 'absolute',
+            ...testimonial.position
+          } as CSSProperties}>
             <TestimonialBubble
               imageSrc={testimonial.imageSrc}
               name={testimonial.name}

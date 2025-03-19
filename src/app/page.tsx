@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, Suspense, lazy, useEffect } from 'react';
+import React, { useState, Suspense, lazy, useEffect, CSSProperties } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Clock, Award, Handshake } from 'lucide-react';
@@ -70,39 +70,32 @@ export default function Home() {
     return null;
   }
 
-  // Harmonically distribute testimonials across sections
-  const testimonialPairs = [
-    // Hero Section
-    [
-      { ...testimonials[0], position: { top: '15%', left: '5%', position: 'absolute', zIndex: 50 } },
-      { ...testimonials[1], position: { bottom: '30%', right: '5%', position: 'absolute', zIndex: 50 } },
+  const testimonialSets = {
+    howWeWork: [
+      { ...testimonials[0], position: { position: 'absolute', top: '15%', left: '5%', zIndex: 50 } as CSSProperties },
+      { ...testimonials[1], position: { position: 'absolute', bottom: '30%', right: '5%', zIndex: 50 } as CSSProperties },
     ],
-    // How It Works Section
-    [
-      { ...testimonials[2], position: { top: '10%', left: '5%', position: 'absolute', zIndex: 50 } },
-      { ...testimonials[3], position: { bottom: '10%', right: '5%', position: 'absolute', zIndex: 50 } },
+    hiringChallenges: [
+      { ...testimonials[2], position: { position: 'absolute', top: '10%', left: '5%', zIndex: 50 } as CSSProperties },
+      { ...testimonials[3], position: { position: 'absolute', bottom: '10%', right: '5%', zIndex: 50 } as CSSProperties },
     ],
-    // Industry Focus First Pair
-    [
-      { ...testimonials[4], position: { top: '15%', left: '5%', position: 'absolute', zIndex: 50 } },
-      { ...testimonials[5], position: { bottom: '15%', right: '5%', position: 'absolute', zIndex: 50 } },
+    services: [
+      { ...testimonials[4], position: { position: 'absolute', top: '15%', left: '5%', zIndex: 50 } as CSSProperties },
+      { ...testimonials[5], position: { position: 'absolute', bottom: '15%', right: '5%', zIndex: 50 } as CSSProperties },
     ],
-    // Hiring Challenges Section
-    [
-      { ...testimonials[6], position: { top: '15%', left: '5%', position: 'absolute', zIndex: 999 } },
-      { ...testimonials[7], position: { top: '85%', right: '25%', position: 'absolute', zIndex: 999 } },
+    industryFocus: [
+      { ...testimonials[6], position: { position: 'absolute', top: '15%', left: '5%', zIndex: 999 } as CSSProperties },
+      { ...testimonials[7], position: { position: 'absolute', top: '85%', right: '25%', zIndex: 999 } as CSSProperties },
     ],
-    // Services Section
-    [
-      { ...testimonials[8], position: { top: '10%', left: '5%', position: 'absolute', zIndex: 999 } },
-      { ...testimonials[9], position: { bottom: '10%', right: '5%', position: 'absolute', zIndex: 999 } },
+    bestInClass: [
+      { ...testimonials[8], position: { position: 'absolute', top: '10%', left: '5%', zIndex: 999 } as CSSProperties },
+      { ...testimonials[9], position: { position: 'absolute', bottom: '10%', right: '5%', zIndex: 999 } as CSSProperties },
     ],
-    // Industry Focus Second Pair
-    [
-      { ...testimonials[10], position: { top: '45%', left: '5%', position: 'absolute', zIndex: 999 } },
-      { ...testimonials[11], position: { bottom: '45%', right: '5%', position: 'absolute', zIndex: 999 } },
+    faq: [
+      { ...testimonials[10], position: { position: 'absolute', top: '45%', left: '5%', zIndex: 999 } as CSSProperties },
+      { ...testimonials[11], position: { position: 'absolute', bottom: '45%', right: '5%', zIndex: 999 } as CSSProperties },
     ],
-  ];
+  };
   
   return (
     <div suppressHydrationWarning>
@@ -114,7 +107,7 @@ export default function Home() {
         {/* Hero Section */}
         <section className="min-h-[85vh] flex items-center justify-center relative bg-black py-16 pt-24">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            {testimonialPairs[0].map((testimonial, index) => (
+            {testimonialSets.howWeWork.map((testimonial, index) => (
               <div key={index} style={{
                 ...testimonial.position,
                 top: index === 0 ? '25%' : testimonial.position.top,
@@ -217,11 +210,11 @@ export default function Home() {
 
         <div className="space-y-20">
           <Suspense fallback={<Loading />}>
-            <HiringChallenges testimonials={testimonialPairs[3]} />
+            <HiringChallenges testimonials={testimonialSets.hiringChallenges} />
           </Suspense>
 
           <Suspense fallback={<Loading />}>
-            <HowItWorks testimonials={testimonialPairs[1]} />
+            <HowItWorks testimonials={testimonialSets.howWeWork} />
           </Suspense>
 
           <Suspense fallback={<Loading />}>
@@ -229,23 +222,15 @@ export default function Home() {
           </Suspense>
 
           <Suspense fallback={<Loading />}>
-            <Services testimonials={testimonialPairs[4]} />
+            <Services testimonials={testimonialSets.services} />
           </Suspense>
 
           <Suspense fallback={<Loading />}>
-            <IndustryFocus testimonials={[
-              // Keep only the top pair
-              { ...testimonials[4], position: { top: '15%', left: '5%', position: 'absolute', zIndex: 999 } },
-              { ...testimonials[5], position: { bottom: '15%', right: '5%', position: 'absolute', zIndex: 999 } },
-            ]} />
+            <IndustryFocus testimonials={testimonialSets.industryFocus} />
           </Suspense>
 
           <Suspense fallback={<Loading />}>
-            <JobBoard testimonials={[
-              // Add the middle pair from Industry Focus, positioned above search bar
-              { ...testimonials[10], position: { top: '-5%', left: '5%', position: 'absolute', zIndex: 999 } },
-              { ...testimonials[11], position: { top: '-5%', right: '5%', position: 'absolute', zIndex: 999 } },
-            ]} />
+            <JobBoard testimonials={testimonialSets.services} />
           </Suspense>
 
           <Suspense fallback={<Loading />}>
