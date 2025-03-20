@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { submitCandidateReferral } from '@/lib/airtable-server';
+import { submitCandidateReferral } from '../../../lib/airtable-server';
 import { z } from 'zod';
 
 // Validation schema

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getJobById } from '@/lib/airtable-server';
+import { getJobById } from '../../../../lib/airtable-server';
 
 export async function GET(
   request: NextRequest,
