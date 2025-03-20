@@ -27,12 +27,13 @@ export interface Job {
 
 export interface CandidateReferral {
   id: string;
-  name: string;
-  email: string;
-  phone: string;
+  candidateName: string;
+  candidateEmail: string;
+  phoneNumber: string;
   resume: string[];
   jobId: string;
   message: string;
+  submittedAt?: string;
 }
 
 // Custom fetch implementation that doesn't use AbortSignal
@@ -171,12 +172,13 @@ export async function submitCandidateReferral(data: Omit<CandidateReferral, 'id'
     await referralTable.create([
       {
         fields: {
-          Name: data.name,
-          Email: data.email,
-          Phone: data.phone,
-          Resume: data.resume,
+          'Candidate Name': data.candidateName,
+          'Candidate Email': data.candidateEmail,
+          'Phone Number': data.phoneNumber,
+          'Resume': data.resume,
           'Job ID': data.jobId,
-          Message: data.message,
+          'Message': data.message,
+          'Submitted At': new Date().toISOString()
         },
       },
     ]);

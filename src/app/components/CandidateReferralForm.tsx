@@ -61,12 +61,12 @@ export default function CandidateReferralForm({ isOpen, onClose }: CandidateRefe
       
       // Submit to Airtable
       const result = await submitCandidateReferral({
-        yourName: formData.yourName,
-        yourEmail: formData.yourEmail,
         candidateName: formData.candidateName,
         candidateEmail: formData.candidateEmail,
-        candidatePhone: formData.candidatePhone,
-        relationship: 'Referral', // Default relationship
+        phoneNumber: formData.candidatePhone || '',
+        resume: [formData.candidateLinkedin], // Using LinkedIn URL as resume for now
+        jobId: 'direct_referral', // Default job ID for direct referrals
+        message: `Referred by ${formData.yourName} (${formData.yourEmail})`,
       });
       
       if (result) {

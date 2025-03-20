@@ -4,9 +4,9 @@ import { z } from 'zod';
 
 // Validation schema
 const referralSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email address'),
-  phone: z.string().min(1, 'Phone number is required'),
+  candidateName: z.string().min(1, 'Candidate name is required'),
+  candidateEmail: z.string().email('Invalid email address'),
+  phoneNumber: z.string().min(1, 'Phone number is required'),
   resume: z.array(z.string()).min(1, 'Resume is required'),
   jobId: z.string().min(1, 'Job ID is required'),
   message: z.string().optional(),
