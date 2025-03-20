@@ -3,7 +3,7 @@ import Airtable from 'airtable';
 // Server-side environment variables (no NEXT_PUBLIC prefix)
 const apiKey = process.env.AIRTABLE_API_KEY;
 const baseId = process.env.AIRTABLE_BASE_ID;
-const jobsTableName = process.env.AIRTABLE_TABLE_NAME || 'Jobs';
+const jobsTableName = process.env.AIRTABLE_TABLE_NAME || 'JobListings';
 const candidateReferralTableName = process.env.AIRTABLE_CANDIDATE_REFERRAL_TABLE || 'CandidateReferrals';
 const candidateRequestTableName = process.env.AIRTABLE_CANDIDATE_REQUEST_TABLE || 'CandidateRequests';
 const companyReferralTableName = process.env.AIRTABLE_COMPANY_REFERRAL_TABLE || 'CompanyReferrals';
