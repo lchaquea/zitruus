@@ -17,29 +17,59 @@ if (!baseId) {
   console.error('Airtable Base ID is missing');
 }
 
-// Custom fetch function that doesn't use AbortSignal
-const customFetch = async (url: string, options: any = {}) => {
-  // Remove the signal property from options to avoid AbortSignal issues
-  const { signal, ...restOptions } = options;
-  return fetch(url, restOptions);
-};
+// Create a custom Airtable instance with modified fetch
+class CustomAirtable extends Airtable {
+  private static instance: CustomAirtable;
 
-// Configure Airtable with custom fetch
-Airtable.configure({
+  constructor(config: { apiKey: string }) {
+    super(config);
+    
+    // Override the internal fetch method
+    const originalFetch = (this as any)._airtable._fetchApi;
+    (this as any)._airtable._fetchApi = async (url: string, options: any = {}) => {
+      const { signal, ...restOptions } = options;
+      return originalFetch(url, restOptions);
+    };
+  }
+
+  static getInstance(): CustomAirtable {
+    if (!CustomAirtable.instance) {
+      CustomAirtable.instance = new CustomAirtable({ apiKey: apiKey as string });
+    }
+    return CustomAirtable.instance;
+  }
+}
+
+// Get the singleton instance
+const airtable = CustomAirtable.getInstance();
+
+// Configure the instance
+airtable.configure({
   apiKey: apiKey,
-  requestTimeout: 300000, // 5 minutes
   endpointUrl: 'https://api.airtable.com',
   apiVersion: '0.1.0',
   noRetryIfRateLimited: false,
-  fetch: customFetch,
 });
 
-const base = Airtable.base(baseId as string);
+const base = airtable.base(baseId as string);
 const jobsTable = base(jobsTableName);
 const candidateReferralTable = base(candidateReferralTableName);
 const candidateRequestTable = base(candidateRequestTableName);
 const companyReferralTable = base(companyReferralTableName);
 const resumePoolTable = base(resumePoolTableName);
+
+// Helper function to safely handle Airtable operations
+const safeAirtableOperation = async <T>(operation: () => Promise<T>): Promise<T> => {
+  try {
+    return await operation();
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('AbortSignal')) {
+      console.warn('Ignoring AbortSignal error, retrying operation...');
+      return await operation();
+    }
+    throw error;
+  }
+};
 
 // Define the Job type
 export type Job = {
@@ -143,9 +173,9 @@ export type JobApplication = {
 
 // ==================== JOB OPERATIONS ====================
 
-// Get all jobs
+// Get all jobs with safe operation
 export const getAllJobs = async (): Promise<Job[]> => {
-  try {
+  return safeAirtableOperation(async () => {
     if (!apiKey || !baseId) {
       console.error('Missing required Airtable configuration');
       throw new Error('Missing Airtable configuration');
@@ -238,15 +268,12 @@ export const getAllJobs = async (): Promise<Job[]> => {
         };
       }
     });
-  } catch (error) {
-    console.error('Error fetching jobs from Airtable:', error);
-    throw error; // Let the component handle the error
-  }
+  });
 };
 
-// Get a job by ID
+// Get a job by ID with safe operation
 export const getJobById = async (id: string): Promise<Job | null> => {
-  try {
+  return safeAirtableOperation(async () => {
     console.log('getJobById called with ID:', id);
     
     if (!id) {
@@ -394,10 +421,7 @@ export const getJobById = async (id: string): Promise<Job | null> => {
       console.error(`Error finding job by record ID ${id}:`, error);
       return null;
     }
-  } catch (error) {
-    console.error(`Error fetching job with ID ${id} from Airtable:`, error);
-    return null;
-  }
+  });
 };
 
 // Create a new job
