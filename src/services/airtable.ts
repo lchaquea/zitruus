@@ -24,39 +24,57 @@ class CustomAirtable extends Airtable {
   constructor(config: { apiKey: string }) {
     super(config);
     
-    // Override the internal fetch method
-    const originalFetch = (this as any)._airtable._fetchApi;
-    (this as any)._airtable._fetchApi = async (url: string, options: any = {}) => {
-      const { signal, ...restOptions } = options;
-      return originalFetch(url, restOptions);
-    };
+    // Only override fetch if _airtable exists
+    if ((this as any)._airtable) {
+      const originalFetch = (this as any)._airtable._fetchApi;
+      if (originalFetch) {
+        (this as any)._airtable._fetchApi = async (url: string, options: any = {}) => {
+          const { signal, ...restOptions } = options;
+          return originalFetch(url, restOptions);
+        };
+      }
+    }
   }
 
   static getInstance(): CustomAirtable {
     if (!CustomAirtable.instance) {
-      CustomAirtable.instance = new CustomAirtable({ apiKey: apiKey as string });
+      if (!apiKey) {
+        throw new Error('Airtable API key is missing');
+      }
+      CustomAirtable.instance = new CustomAirtable({ apiKey });
     }
     return CustomAirtable.instance;
   }
 }
 
-// Get the singleton instance
-const airtable = CustomAirtable.getInstance();
+// Get the singleton instance with error handling
+const getAirtableInstance = () => {
+  try {
+    return CustomAirtable.getInstance();
+  } catch (error) {
+    console.error('Failed to initialize Airtable:', error);
+    return null;
+  }
+};
 
-// Configure the instance
-airtable.configure({
-  apiKey: apiKey,
-  endpointUrl: 'https://api.airtable.com',
-  apiVersion: '0.1.0',
-  noRetryIfRateLimited: false,
-});
+const airtable = getAirtableInstance();
 
-const base = airtable.base(baseId as string);
-const jobsTable = base(jobsTableName);
-const candidateReferralTable = base(candidateReferralTableName);
-const candidateRequestTable = base(candidateRequestTableName);
-const companyReferralTable = base(companyReferralTableName);
-const resumePoolTable = base(resumePoolTableName);
+// Only configure if airtable instance exists
+if (airtable) {
+  airtable.configure({
+    apiKey: apiKey,
+    endpointUrl: 'https://api.airtable.com',
+    apiVersion: '0.1.0',
+    noRetryIfRateLimited: false,
+  });
+}
+
+const base = airtable ? airtable.base(baseId as string) : null;
+const jobsTable = base ? base(jobsTableName) : null;
+const candidateReferralTable = base ? base(candidateReferralTableName) : null;
+const candidateRequestTable = base ? base(candidateRequestTableName) : null;
+const companyReferralTable = base ? base(companyReferralTableName) : null;
+const resumePoolTable = base ? base(resumePoolTableName) : null;
 
 // Helper function to safely handle Airtable operations
 const safeAirtableOperation = async <T>(operation: () => Promise<T>): Promise<T> => {
