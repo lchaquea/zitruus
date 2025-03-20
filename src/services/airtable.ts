@@ -17,9 +17,21 @@ if (!baseId) {
   console.error('Airtable Base ID is missing');
 }
 
-// Configure Airtable
+// Custom fetch function that doesn't use AbortSignal
+const customFetch = async (url: string, options: any = {}) => {
+  // Remove the signal property from options to avoid AbortSignal issues
+  const { signal, ...restOptions } = options;
+  return fetch(url, restOptions);
+};
+
+// Configure Airtable with custom fetch
 Airtable.configure({
   apiKey: apiKey,
+  requestTimeout: 300000, // 5 minutes
+  endpointUrl: 'https://api.airtable.com',
+  apiVersion: '0.1.0',
+  noRetryIfRateLimited: false,
+  fetch: customFetch,
 });
 
 const base = Airtable.base(baseId as string);
