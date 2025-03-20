@@ -3,8 +3,8 @@ import Airtable from 'airtable';
 
 export async function GET() {
   try {
-    const apiKey = process.env.NEXT_PUBLIC_AIRTABLE_API_KEY;
-    const baseId = process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID;
+    const apiKey = process.env.AIRTABLE_API_KEY;
+    const baseId = process.env.AIRTABLE_BASE_ID;
     
     if (!apiKey || !baseId) {
       return NextResponse.json({

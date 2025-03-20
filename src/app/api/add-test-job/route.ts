@@ -4,9 +4,9 @@ import Airtable from 'airtable';
 export async function GET() {
   try {
     // Get environment variables
-    const apiKey = process.env.NEXT_PUBLIC_AIRTABLE_API_KEY;
-    const baseId = process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID;
-    const jobsTableName = process.env.NEXT_PUBLIC_AIRTABLE_TABLE_NAME || 'Jobs';
+    const apiKey = process.env.AIRTABLE_API_KEY;
+    const baseId = process.env.AIRTABLE_BASE_ID;
+    const jobsTableName = process.env.AIRTABLE_TABLE_NAME || 'Jobs';
 
     // Check if API key and base ID are available
     if (!apiKey) {

@@ -1,13 +1,13 @@
 import Airtable from 'airtable';
 
 // Initialize Airtable with API key
-const apiKey = process.env.NEXT_PUBLIC_AIRTABLE_API_KEY;
-const baseId = process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID;
-const jobsTableName = process.env.NEXT_PUBLIC_AIRTABLE_TABLE_NAME || 'Jobs';
-const candidateReferralTableName = process.env.NEXT_PUBLIC_AIRTABLE_CANDIDATE_REFERRAL_TABLE || 'CandidateReferrals';
-const candidateRequestTableName = process.env.NEXT_PUBLIC_AIRTABLE_CANDIDATE_REQUEST_TABLE || 'CandidateRequests';
-const companyReferralTableName = process.env.NEXT_PUBLIC_AIRTABLE_COMPANY_REFERRAL_TABLE || 'CompanyReferrals';
-const resumePoolTableName = process.env.NEXT_PUBLIC_AIRTABLE_RESUME_POOL_TABLE || 'ResumePool';
+const apiKey = process.env.AIRTABLE_API_KEY;
+const baseId = process.env.AIRTABLE_BASE_ID;
+const jobsTableName = process.env.AIRTABLE_TABLE_NAME || 'Jobs';
+const candidateReferralTableName = process.env.AIRTABLE_CANDIDATE_REFERRAL_TABLE || 'CandidateReferrals';
+const candidateRequestTableName = process.env.AIRTABLE_CANDIDATE_REQUEST_TABLE || 'CandidateRequests';
+const companyReferralTableName = process.env.AIRTABLE_COMPANY_REFERRAL_TABLE || 'CompanyReferrals';
+const resumePoolTableName = process.env.AIRTABLE_RESUME_POOL_TABLE || 'ResumePool';
 
 if (!apiKey) {
   console.error('Airtable API key is missing');
@@ -649,8 +649,7 @@ export async function submitJobApplication(application: {
   jobTitle: string;
 }) {
   try {
-    const base = getAirtableBase();
-    const table = base(process.env.NEXT_PUBLIC_AIRTABLE_JOB_APPLICATIONS_TABLE || 'JobApplications');
+    const table = base(process.env.AIRTABLE_JOB_APPLICATIONS_TABLE || 'JobApplications');
     
     const record = await table.create([
       {

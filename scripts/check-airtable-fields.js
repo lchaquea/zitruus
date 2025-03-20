@@ -4,9 +4,9 @@ const Airtable = require('airtable');
 async function checkFields() {
   try {
     // Get environment variables
-    const apiKey = process.env.NEXT_PUBLIC_AIRTABLE_API_KEY;
-    const baseId = process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID;
-    const tableName = process.env.NEXT_PUBLIC_AIRTABLE_CANDIDATE_REQUEST_TABLE || 'CandidateRequests';
+    const apiKey = process.env.AIRTABLE_API_KEY;
+    const baseId = process.env.AIRTABLE_BASE_ID;
+    const tableName = process.env.AIRTABLE_CANDIDATE_REQUEST_TABLE || 'CandidateRequests';
 
     if (!apiKey || !baseId) {
       console.error('Missing configuration:', { 
