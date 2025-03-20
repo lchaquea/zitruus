@@ -9,25 +9,6 @@ const candidateRequestTableName = process.env.AIRTABLE_CANDIDATE_REQUEST_TABLE |
 const companyReferralTableName = process.env.AIRTABLE_COMPANY_REFERRAL_TABLE || 'CompanyReferrals';
 const resumePoolTableName = process.env.AIRTABLE_RESUME_POOL_TABLE || 'ResumePool';
 
-if (!apiKey) {
-  throw new Error('Airtable API key is not configured');
-}
-
-if (!baseId) {
-  throw new Error('Airtable Base ID is not configured');
-}
-
-// Initialize Airtable
-const airtable = new Airtable({ apiKey });
-const base = airtable.base(baseId);
-
-// Initialize tables
-const jobsTable = base(jobsTableName);
-const candidateReferralTable = base(candidateReferralTableName);
-const candidateRequestTable = base(candidateRequestTableName);
-const companyReferralTable = base(companyReferralTableName);
-const resumePoolTable = base(resumePoolTableName);
-
 // Type definitions
 export interface Job {
   id: string;
@@ -54,20 +35,38 @@ export interface CandidateReferral {
   message: string;
 }
 
-// Lazy initialization of Airtable client
+// Custom fetch implementation that doesn't use AbortSignal
+const customFetch = async (url: string, options: any = {}) => {
+  try {
+    // Remove the signal property to avoid AbortSignal issues
+    const { signal, ...restOptions } = options;
+    const response = await fetch(url, restOptions);
+    return response;
+  } catch (error) {
+    console.error('Error in customFetch:', error);
+    throw error;
+  }
+};
+
+// Lazy initialization of Airtable client with custom fetch
 function getAirtableClient() {
-  const apiKey = process.env.AIRTABLE_API_KEY;
-  const baseId = process.env.AIRTABLE_BASE_ID;
+  const currentApiKey = process.env.AIRTABLE_API_KEY;
+  const currentBaseId = process.env.AIRTABLE_BASE_ID;
   
-  if (!apiKey || !baseId) {
+  if (!currentApiKey || !currentBaseId) {
     console.warn('Airtable credentials missing');
     return null;
   }
 
   try {
-    const airtable = new Airtable({ apiKey });
-    const base = airtable.base(baseId);
-    return { airtable, base };
+    // Configure Airtable to use our custom fetch
+    Airtable.configure({
+      apiKey: currentApiKey,
+      fetch: customFetch as any,
+    });
+
+    const base = new Airtable().base(currentBaseId);
+    return base;
   } catch (error) {
     console.error('Error initializing Airtable:', error);
     return null;
@@ -76,11 +75,13 @@ function getAirtableClient() {
 
 // Get table instance with lazy initialization
 function getTable(tableName: string) {
-  const client = getAirtableClient();
-  if (!client) return null;
-  
   try {
-    return client.base(tableName);
+    const base = getAirtableClient();
+    if (!base) {
+      console.warn(`Unable to get table ${tableName}: Airtable client not initialized`);
+      return null;
+    }
+    return base(tableName);
   } catch (error) {
     console.error(`Error getting table ${tableName}:`, error);
     return null;
@@ -90,7 +91,7 @@ function getTable(tableName: string) {
 // Server-side functions
 export async function getAllJobs(): Promise<Job[]> {
   try {
-    const jobsTable = getTable(process.env.AIRTABLE_TABLE_NAME || 'Jobs');
+    const jobsTable = getTable(jobsTableName);
     if (!jobsTable) {
       console.warn('Jobs table not available');
       return [];
@@ -119,7 +120,7 @@ export async function getAllJobs(): Promise<Job[]> {
 
 export async function getJobById(jobId: string): Promise<Job | null> {
   try {
-    const jobsTable = getTable(process.env.AIRTABLE_TABLE_NAME || 'Jobs');
+    const jobsTable = getTable(jobsTableName);
     if (!jobsTable) {
       console.warn('Jobs table not available');
       return null;
@@ -159,7 +160,7 @@ export async function getJobById(jobId: string): Promise<Job | null> {
 
 export async function submitCandidateReferral(data: Omit<CandidateReferral, 'id'>): Promise<{ success: boolean; error?: string }> {
   try {
-    const referralTable = getTable(process.env.AIRTABLE_CANDIDATE_REFERRAL_TABLE || 'CandidateReferrals');
+    const referralTable = getTable(candidateReferralTableName);
     if (!referralTable) {
       return {
         success: false,
