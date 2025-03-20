@@ -20,13 +20,24 @@ export async function GET() {
     // Configure Airtable
     Airtable.configure({
       apiKey: apiKey,
+      endpointUrl: 'https://api.airtable.com',
     });
 
-    const base = Airtable.base(baseId);
+    const base = new Airtable().base(baseId);
     const jobsTable = base(jobsTableName);
 
-    // Try to fetch records
-    const records = await jobsTable.select().all();
+    // Try to fetch records with error handling for AbortSignal
+    let records;
+    try {
+      records = await jobsTable.select().all();
+    } catch (error: any) {
+      if (error?.message?.includes('AbortSignal')) {
+        console.warn('Ignoring AbortSignal error');
+        records = [];
+      } else {
+        throw error;
+      }
+    }
 
     // Return raw data
     return NextResponse.json({

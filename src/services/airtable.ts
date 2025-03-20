@@ -17,103 +17,53 @@ if (!baseId) {
   console.error('Airtable Base ID is missing');
 }
 
-// Create a custom Airtable instance with modified fetch
-class CustomAirtable extends Airtable {
-  private static instance: CustomAirtable | null = null;
+// Initialize Airtable base directly
+let airtableBase: any = null;
 
-  constructor(config?: { apiKey?: string }) {
-    if (!config?.apiKey) {
-      super({ apiKey: 'dummy' }); // Provide a dummy key for SSR
-      return;
-    }
+try {
+  if (apiKey && baseId) {
+    // Configure Airtable globally
+    Airtable.configure({
+      apiKey: apiKey,
+      endpointUrl: 'https://api.airtable.com',
+    });
     
-    super(config);
-    
-    try {
-      if ((this as any)._airtable) {
-        const originalFetch = (this as any)._airtable._fetchApi;
-        if (originalFetch) {
-          (this as any)._airtable._fetchApi = async (url: string, options: any = {}) => {
-            const { signal, ...restOptions } = options;
-            return originalFetch(url, restOptions);
-          };
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to override fetch method:', error);
-    }
+    // Create base instance
+    airtableBase = new Airtable().base(baseId);
   }
-
-  static getInstance(): CustomAirtable {
-    if (!CustomAirtable.instance) {
-      try {
-        CustomAirtable.instance = new CustomAirtable({ apiKey });
-        
-        // Only configure if we have a valid API key
-        if (apiKey) {
-          CustomAirtable.instance.configure({
-            apiKey: apiKey,
-            endpointUrl: 'https://api.airtable.com',
-            apiVersion: '0.1.0',
-            noRetryIfRateLimited: false,
-          });
-        }
-      } catch (error) {
-        console.warn('Failed to initialize Airtable instance:', error);
-        CustomAirtable.instance = new CustomAirtable(); // Create dummy instance
-      }
-    }
-    return CustomAirtable.instance;
-  }
+} catch (error) {
+  console.error('Error initializing Airtable:', error);
 }
 
-// Helper function to safely get Airtable instance
-const getAirtableInstance = (): CustomAirtable => {
-  try {
-    return CustomAirtable.getInstance();
-  } catch (error) {
-    console.warn('Error getting Airtable instance:', error);
-    return new CustomAirtable();
-  }
-};
-
-// Helper function to safely get base
-const getBase = () => {
-  try {
-    const instance = getAirtableInstance();
-    return baseId ? instance.base(baseId) : null;
-  } catch (error) {
-    console.warn('Error getting Airtable base:', error);
-    return null;
-  }
-};
-
-// Initialize tables with error handling
-const base = getBase();
-const jobsTable = base ? base(jobsTableName) : null;
-const candidateReferralTable = base ? base(candidateReferralTableName) : null;
-const candidateRequestTable = base ? base(candidateRequestTableName) : null;
-const companyReferralTable = base ? base(companyReferralTableName) : null;
-const resumePoolTable = base ? base(resumePoolTableName) : null;
-
-// Helper function to safely handle Airtable operations
+// Helper function to safely execute Airtable operations
 const safeAirtableOperation = async <T>(operation: () => Promise<T>): Promise<T> => {
   try {
     return await operation();
-  } catch (error) {
-    if (error instanceof Error) {
-      if (error.message.includes('AbortSignal')) {
-        console.warn('Ignoring AbortSignal error, retrying operation...');
-        return await operation();
-      }
-      if (error.message.includes('configure')) {
-        console.warn('Configuration error, returning empty result');
-        return [] as any;
-      }
+  } catch (error: any) {
+    if (error?.message?.includes('AbortSignal')) {
+      console.warn('Ignoring AbortSignal error');
+      // Return empty array for list operations
+      return [] as any;
     }
     throw error;
   }
 };
+
+// Helper function to get table
+const getTable = (tableName: string) => {
+  if (!airtableBase) {
+    console.warn('Airtable base not initialized');
+    return null;
+  }
+  return airtableBase(tableName);
+};
+
+// Initialize tables
+const jobsTable = getTable(jobsTableName);
+const candidateReferralTable = getTable(candidateReferralTableName);
+const candidateRequestTable = getTable(candidateRequestTableName);
+const companyReferralTable = getTable(companyReferralTableName);
+const resumePoolTable = getTable(resumePoolTableName);
 
 // Define the Job type
 export type Job = {

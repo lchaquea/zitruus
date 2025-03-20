@@ -19,12 +19,12 @@ export async function GET() {
     // Configure Airtable
     Airtable.configure({
       apiKey: apiKey,
+      endpointUrl: 'https://api.airtable.com',
     });
 
-    const base = Airtable.base(baseId);
+    const base = new Airtable().base(baseId);
     
-    // Unfortunately, Airtable API doesn't provide a direct way to list all tables
-    // We'll try to access some common tables to check if they exist
+    // Try different table name variations
     const tables = [
       'Job Listings',
       'JobListings',
@@ -44,7 +44,17 @@ export async function GET() {
     for (const tableName of tables) {
       try {
         const table = base(tableName);
-        const records = await table.select({ maxRecords: 1 }).all();
+        let records;
+        try {
+          records = await table.select({ maxRecords: 1 }).all();
+        } catch (error: any) {
+          if (error?.message?.includes('AbortSignal')) {
+            console.warn(`Ignoring AbortSignal error for table ${tableName}`);
+            records = [];
+          } else {
+            throw error;
+          }
+        }
         tableResults[tableName] = {
           exists: true,
           recordCount: records.length,
