@@ -17,16 +17,36 @@ if (!baseId) {
   throw new Error('Airtable Base ID is not configured');
 }
 
-// Initialize Airtable
-const airtable = new Airtable({ apiKey });
-const base = airtable.base(baseId);
+// Initialize Airtable with custom fetch
+const airtable = new Airtable({
+  apiKey,
+  fetch: async (url: string, init?: RequestInit) => {
+    // Remove AbortSignal from the request
+    if (init?.signal) {
+      const { signal, ...rest } = init;
+      return fetch(url, rest);
+    }
+    return fetch(url, init);
+  }
+});
 
-// Initialize tables
+// Configure base and tables
+const base = airtable.base(baseId);
 const jobsTable = base(jobsTableName);
 const candidateReferralTable = base(candidateReferralTableName);
 const candidateRequestTable = base(candidateRequestTableName);
 const companyReferralTable = base(companyReferralTableName);
 const resumePoolTable = base(resumePoolTableName);
+
+// Helper function to safely handle Airtable operations
+async function safeAirtableOperation<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    console.error('Airtable operation error:', error);
+    throw error;
+  }
+}
 
 // Type definitions
 export interface Job {
@@ -56,7 +76,7 @@ export interface CandidateReferral {
 
 // Server-side functions
 export async function getAllJobs(): Promise<Job[]> {
-  try {
+  return safeAirtableOperation(async () => {
     const records = await jobsTable.select().all();
     return records.map((record) => ({
       id: record.id,
@@ -72,14 +92,11 @@ export async function getAllJobs(): Promise<Job[]> {
       description: record.get('Job Description')?.toString() || '',
       postedDate: record.get('Date Posted')?.toString() || new Date().toISOString(),
     }));
-  } catch (error) {
-    console.error('Error fetching jobs:', error);
-    return [];
-  }
+  });
 }
 
 export async function getJobById(jobId: string): Promise<Job | null> {
-  try {
+  return safeAirtableOperation(async () => {
     const records = await jobsTable
       .select({
         filterByFormula: `OR({Job ID} = '${jobId}', RECORD_ID() = '${jobId}')`,
@@ -106,32 +123,31 @@ export async function getJobById(jobId: string): Promise<Job | null> {
       description: record.get('Job Description')?.toString() || '',
       postedDate: record.get('Date Posted')?.toString() || new Date().toISOString(),
     };
-  } catch (error) {
-    console.error('Error fetching job:', error);
-    return null;
-  }
+  });
 }
 
 export async function submitCandidateReferral(data: Omit<CandidateReferral, 'id'>): Promise<{ success: boolean; error?: string }> {
-  try {
-    await candidateReferralTable.create([
-      {
-        fields: {
-          Name: data.name,
-          Email: data.email,
-          Phone: data.phone,
-          Resume: data.resume,
-          'Job ID': data.jobId,
-          Message: data.message,
+  return safeAirtableOperation(async () => {
+    try {
+      await candidateReferralTable.create([
+        {
+          fields: {
+            Name: data.name,
+            Email: data.email,
+            Phone: data.phone,
+            Resume: data.resume,
+            'Job ID': data.jobId,
+            Message: data.message,
+          },
         },
-      },
-    ]);
-    return { success: true };
-  } catch (error) {
-    console.error('Error submitting candidate referral:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error occurred' 
-    };
-  }
+      ]);
+      return { success: true };
+    } catch (error) {
+      console.error('Error submitting candidate referral:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error occurred' 
+      };
+    }
+  });
 } 
