@@ -80,9 +80,13 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 function getInitialLanguage(): Language {
   if (typeof window === 'undefined') return 'en';
   
-  const savedLanguage = localStorage.getItem('language') as Language;
-  const browserLanguage = navigator.language.startsWith('es') ? 'es' : 'en';
-  return (savedLanguage === 'en' || savedLanguage === 'es') ? savedLanguage : browserLanguage;
+  try {
+    const savedLanguage = localStorage.getItem('language') as Language;
+    const browserLanguage = navigator.language.startsWith('es') ? 'es' : 'en';
+    return (savedLanguage === 'en' || savedLanguage === 'es') ? savedLanguage : browserLanguage;
+  } catch {
+    return 'en';
+  }
 }
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
@@ -107,23 +111,32 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     return translations[language][key] || translations.en[key] || key;
   };
 
-  if (!mounted) {
-    return <div suppressHydrationWarning>{children}</div>;
-  }
+  // Provide a default context value during SSR
+  const contextValue = {
+    language,
+    setLanguage,
+    t
+  };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
-      <div suppressHydrationWarning>
-        {children}
-      </div>
+    <LanguageContext.Provider value={contextValue}>
+      {children}
     </LanguageContext.Provider>
   );
 }
 
 export function useLanguage() {
   const context = useContext(LanguageContext);
+  
+  // During SSR or if context is undefined, return default values
   if (context === undefined) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
+    const defaultContext: LanguageContextType = {
+      language: 'en',
+      setLanguage: () => {},
+      t: (key: TranslationKey) => translations.en[key] || key
+    };
+    return defaultContext;
   }
+  
   return context;
 } 
