@@ -1,7 +1,25 @@
 import { NextResponse } from 'next/server';
 import Airtable from 'airtable';
 
+// Custom fetch function that removes AbortSignal
+const customFetch = async (url: string, options: any = {}) => {
+  const { signal, ...fetchOptions } = options;
+  return fetch(url, fetchOptions);
+};
+
+// Mark this route as dynamic to prevent static optimization
+export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
+
 export async function GET() {
+  // Prevent execution during build time
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV === 'production') {
+    return NextResponse.json({
+      success: false,
+      message: 'This endpoint is not available in production',
+    }, { status: 403 });
+  }
+
   try {
     // Get environment variables
     const apiKey = process.env.AIRTABLE_API_KEY;
@@ -17,79 +35,56 @@ export async function GET() {
       return NextResponse.json({ error: 'Airtable Base ID is missing' }, { status: 500 });
     }
 
-    // Configure Airtable
+    // Configure Airtable with custom fetch
     Airtable.configure({
       apiKey: apiKey,
+      endpointUrl: 'https://api.airtable.com',
+      requestTimeout: 300000, // 5 minutes timeout
+      fetch: customFetch as any,
     });
 
-    const base = Airtable.base(baseId);
+    const base = new Airtable().base(baseId);
+    const table = base(jobsTableName);
     
-    // Try different table name variations
-    const tableNames = [
-      jobsTableName,
-      'Job Listings',
-      'JobListings',
-      'Jobs'
-    ];
-    
-    let success = false;
-    let createdRecord = null;
-    let usedTableName = '';
-    let error = null;
-    
-    // Try each table name until one works
-    for (const tableName of tableNames) {
-      try {
-        console.log(`Trying to add test job to table: ${tableName}`);
-        const table = base(tableName);
-        
-        // Create a test job record
-        const record = await table.create({
-          'Job Title': 'Test Software Developer',
-          'Function': 'Engineering',
-          'Location': 'Remote - LATAM',
-          'Employment Type': 'Full-time',
-          'Salary Range': '$60K - $80K USD/year',
-          'Date Posted': new Date().toISOString().split('T')[0],
-          'Application Deadline': new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          'Job Description': 'This is a test job posting created via the API.',
-          'Responsibilities': 'Write code\nTest features\nCollaborate with team',
-          'Requirements': 'JavaScript\nReact\n3+ years experience',
-          'Skills': 'JavaScript, React, Node.js, TypeScript',
-          'Company Description': 'Test company description',
-          'Industry': 'Technology',
-          'Benefits': 'Remote work\nFlexible hours\nHealth insurance'
-        });
-        
-        success = true;
-        createdRecord = record;
-        usedTableName = tableName;
-        break;
-      } catch (err) {
-        console.error(`Error adding test job to table ${tableName}:`, err);
-        error = err;
-      }
-    }
-    
-    if (success) {
+    try {
+      console.log(`Attempting to add test job to table: ${jobsTableName}`);
+      
+      // Create a test job record
+      const record = await table.create({
+        'Job Title': 'Test Software Developer',
+        'Function': 'Engineering',
+        'Location': 'Remote - LATAM',
+        'Employment Type': 'Full-time',
+        'Salary Range': '$60K - $80K USD/year',
+        'Date Posted': new Date().toISOString().split('T')[0],
+        'Application Deadline': new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        'Job Description': 'This is a test job posting created via the API.',
+        'Responsibilities': 'Write code\nTest features\nCollaborate with team',
+        'Requirements': 'JavaScript\nReact\n3+ years experience',
+        'Skills': 'JavaScript, React, Node.js, TypeScript',
+        'Company Description': 'Test company description',
+        'Industry': 'Technology',
+        'Benefits': 'Remote work\nFlexible hours\nHealth insurance'
+      });
+      
       return NextResponse.json({
         success: true,
-        message: `Successfully added test job to table: ${usedTableName}`,
+        message: `Successfully added test job to table: ${jobsTableName}`,
         record: {
-          id: createdRecord.id,
-          fields: createdRecord.fields
+          id: record.id,
+          fields: record.fields
         }
       });
-    } else {
+    } catch (err) {
+      console.error(`Error adding test job to table ${jobsTableName}:`, err);
       return NextResponse.json({
         success: false,
-        message: 'Failed to add test job to any table',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        triedTables: tableNames
+        message: `Failed to add test job to table: ${jobsTableName}`,
+        error: err instanceof Error ? err.message : 'Unknown error'
       }, { status: 500 });
     }
   } catch (error) {
-    console.error('Error adding test job:', error);
+    console.error('Error in add-test-job route:', error);
     
     return NextResponse.json({
       success: false,
