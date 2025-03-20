@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import Airtable from 'airtable';
 
+// Custom fetch function that removes AbortSignal
+const customFetch = async (url: string, options: any = {}) => {
+  const { signal, ...fetchOptions } = options;
+  return fetch(url, fetchOptions);
+};
+
 export async function GET() {
   try {
     // Get environment variables
@@ -16,10 +22,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Airtable Base ID is missing' }, { status: 500 });
     }
 
-    // Configure Airtable
+    // Configure Airtable with custom fetch
     Airtable.configure({
       apiKey: apiKey,
       endpointUrl: 'https://api.airtable.com',
+      requestTimeout: 300000, // 5 minutes timeout
+      fetch: customFetch as any,
     });
 
     const base = new Airtable().base(baseId);
@@ -44,17 +52,7 @@ export async function GET() {
     for (const tableName of tables) {
       try {
         const table = base(tableName);
-        let records;
-        try {
-          records = await table.select({ maxRecords: 1 }).all();
-        } catch (error: any) {
-          if (error?.message?.includes('AbortSignal')) {
-            console.warn(`Ignoring AbortSignal error for table ${tableName}`);
-            records = [];
-          } else {
-            throw error;
-          }
-        }
+        const records = await table.select({ maxRecords: 1 }).all();
         tableResults[tableName] = {
           exists: true,
           recordCount: records.length,

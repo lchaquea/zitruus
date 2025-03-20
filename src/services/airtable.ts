@@ -1,5 +1,12 @@
 import Airtable from 'airtable';
 
+// Custom fetch function that removes AbortSignal
+const customFetch = async (url: string, options: any = {}) => {
+  // Remove the signal property from options
+  const { signal, ...fetchOptions } = options;
+  return fetch(url, fetchOptions);
+};
+
 // Initialize Airtable with API key
 const apiKey = process.env.AIRTABLE_API_KEY;
 const baseId = process.env.AIRTABLE_BASE_ID;
@@ -22,10 +29,12 @@ let airtableBase: any = null;
 
 try {
   if (apiKey && baseId) {
-    // Configure Airtable globally
+    // Configure Airtable globally with custom fetch
     Airtable.configure({
       apiKey: apiKey,
       endpointUrl: 'https://api.airtable.com',
+      requestTimeout: 300000, // 5 minutes timeout
+      fetch: customFetch as any,
     });
     
     // Create base instance
@@ -40,12 +49,9 @@ const safeAirtableOperation = async <T>(operation: () => Promise<T>): Promise<T>
   try {
     return await operation();
   } catch (error: any) {
-    if (error?.message?.includes('AbortSignal')) {
-      console.warn('Ignoring AbortSignal error');
-      // Return empty array for list operations
-      return [] as any;
-    }
-    throw error;
+    console.error('Airtable operation error:', error);
+    // Return empty array for list operations
+    return [] as any;
   }
 };
 
