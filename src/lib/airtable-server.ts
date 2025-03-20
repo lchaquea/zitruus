@@ -9,42 +9,52 @@ const candidateRequestTableName = process.env.AIRTABLE_CANDIDATE_REQUEST_TABLE |
 const companyReferralTableName = process.env.AIRTABLE_COMPANY_REFERRAL_TABLE || 'CompanyReferrals';
 const resumePoolTableName = process.env.AIRTABLE_RESUME_POOL_TABLE || 'ResumePool';
 
-if (!apiKey) {
-  throw new Error('Airtable API key is not configured');
-}
+// Initialize Airtable with fallback for missing credentials
+let airtable: Airtable | null = null;
+let base: Airtable.Base | null = null;
+let jobsTable: Airtable.Table<any> | null = null;
+let candidateReferralTable: Airtable.Table<any> | null = null;
+let candidateRequestTable: Airtable.Table<any> | null = null;
+let companyReferralTable: Airtable.Table<any> | null = null;
+let resumePoolTable: Airtable.Table<any> | null = null;
 
-if (!baseId) {
-  throw new Error('Airtable Base ID is not configured');
-}
+try {
+  if (!apiKey || !baseId) {
+    console.warn('Airtable credentials missing. Some functionality will be limited.');
+  } else {
+    // Initialize Airtable with custom fetch
+    airtable = new Airtable({
+      apiKey,
+      endpointUrl: 'https://api.airtable.com',
+      apiVersion: '0.1.0',
+      noRetryIfRateLimited: false,
+      requestTimeout: 30000, // 30 second timeout
+    });
 
-// Initialize Airtable with custom fetch
-const airtable = new Airtable({
-  apiKey,
-  fetch: async (url: string, init?: RequestInit) => {
-    // Remove AbortSignal from the request
-    if (init?.signal) {
-      const { signal, ...rest } = init;
-      return fetch(url, rest);
-    }
-    return fetch(url, init);
+    // Configure base and tables
+    base = airtable.base(baseId);
+    jobsTable = base(jobsTableName);
+    candidateReferralTable = base(candidateReferralTableName);
+    candidateRequestTable = base(candidateRequestTableName);
+    companyReferralTable = base(companyReferralTableName);
+    resumePoolTable = base(resumePoolTableName);
   }
-});
-
-// Configure base and tables
-const base = airtable.base(baseId);
-const jobsTable = base(jobsTableName);
-const candidateReferralTable = base(candidateReferralTableName);
-const candidateRequestTable = base(candidateRequestTableName);
-const companyReferralTable = base(companyReferralTableName);
-const resumePoolTable = base(resumePoolTableName);
+} catch (error) {
+  console.error('Error initializing Airtable:', error);
+}
 
 // Helper function to safely handle Airtable operations
-async function safeAirtableOperation<T>(operation: () => Promise<T>): Promise<T> {
+async function safeAirtableOperation<T>(operation: () => Promise<T>, fallback: T): Promise<T> {
+  if (!airtable || !base) {
+    console.warn('Airtable not initialized. Returning fallback value.');
+    return fallback;
+  }
+
   try {
     return await operation();
   } catch (error) {
     console.error('Airtable operation error:', error);
-    throw error;
+    return fallback;
   }
 }
 
@@ -77,6 +87,11 @@ export interface CandidateReferral {
 // Server-side functions
 export async function getAllJobs(): Promise<Job[]> {
   return safeAirtableOperation(async () => {
+    if (!jobsTable) {
+      console.warn('Jobs table not available');
+      return [];
+    }
+
     const records = await jobsTable.select().all();
     return records.map((record) => ({
       id: record.id,
@@ -92,11 +107,16 @@ export async function getAllJobs(): Promise<Job[]> {
       description: record.get('Job Description')?.toString() || '',
       postedDate: record.get('Date Posted')?.toString() || new Date().toISOString(),
     }));
-  });
+  }, []);
 }
 
 export async function getJobById(jobId: string): Promise<Job | null> {
   return safeAirtableOperation(async () => {
+    if (!jobsTable) {
+      console.warn('Jobs table not available');
+      return null;
+    }
+
     const records = await jobsTable
       .select({
         filterByFormula: `OR({Job ID} = '${jobId}', RECORD_ID() = '${jobId}')`,
@@ -123,31 +143,30 @@ export async function getJobById(jobId: string): Promise<Job | null> {
       description: record.get('Job Description')?.toString() || '',
       postedDate: record.get('Date Posted')?.toString() || new Date().toISOString(),
     };
-  });
+  }, null);
 }
 
 export async function submitCandidateReferral(data: Omit<CandidateReferral, 'id'>): Promise<{ success: boolean; error?: string }> {
   return safeAirtableOperation(async () => {
-    try {
-      await candidateReferralTable.create([
-        {
-          fields: {
-            Name: data.name,
-            Email: data.email,
-            Phone: data.phone,
-            Resume: data.resume,
-            'Job ID': data.jobId,
-            Message: data.message,
-          },
-        },
-      ]);
-      return { success: true };
-    } catch (error) {
-      console.error('Error submitting candidate referral:', error);
+    if (!candidateReferralTable) {
       return { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error occurred' 
+        error: 'Candidate referral table not available' 
       };
     }
-  });
+
+    await candidateReferralTable.create([
+      {
+        fields: {
+          Name: data.name,
+          Email: data.email,
+          Phone: data.phone,
+          Resume: data.resume,
+          'Job ID': data.jobId,
+          Message: data.message,
+        },
+      },
+    ]);
+    return { success: true };
+  }, { success: false, error: 'Airtable not initialized' });
 } 
