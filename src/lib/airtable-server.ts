@@ -1,4 +1,10 @@
 import Airtable from 'airtable';
+import { AbortController } from 'node-abort-controller';
+
+// Polyfill AbortController if needed
+if (typeof globalThis.AbortController === 'undefined') {
+  (globalThis as any).AbortController = AbortController;
+}
 
 // Server-side environment variables (no NEXT_PUBLIC prefix)
 const apiKey = process.env.AIRTABLE_API_KEY;
@@ -9,7 +15,28 @@ const candidateRequestTableName = process.env.AIRTABLE_CANDIDATE_REQUEST_TABLE |
 const companyReferralTableName = process.env.AIRTABLE_COMPANY_REFERRAL_TABLE || 'CompanyReferrals';
 const resumePoolTableName = process.env.AIRTABLE_RESUME_POOL_TABLE || 'ResumePool';
 
-// Initialize Airtable with fallback for missing credentials
+// Custom fetch implementation
+const customFetch = async (url: string, init?: RequestInit) => {
+  // Create a new controller for each request
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, 30000); // 30 second timeout
+
+  try {
+    const response = await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    return response;
+  } catch (error) {
+    clearTimeout(timeout);
+    throw error;
+  }
+};
+
+// Initialize Airtable with custom fetch
 let airtable: Airtable | null = null;
 let base: Airtable.Base | null = null;
 let jobsTable: Airtable.Table<any> | null = null;
@@ -22,16 +49,13 @@ try {
   if (!apiKey || !baseId) {
     console.warn('Airtable credentials missing. Some functionality will be limited.');
   } else {
-    // Initialize Airtable with custom fetch
     airtable = new Airtable({
       apiKey,
       endpointUrl: 'https://api.airtable.com',
       apiVersion: '0.1.0',
-      noRetryIfRateLimited: false,
-      requestTimeout: 30000, // 30 second timeout
+      fetch: customFetch,
     });
 
-    // Configure base and tables
     base = airtable.base(baseId);
     jobsTable = base(jobsTableName);
     candidateReferralTable = base(candidateReferralTableName);
