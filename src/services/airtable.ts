@@ -19,57 +19,77 @@ if (!baseId) {
 
 // Create a custom Airtable instance with modified fetch
 class CustomAirtable extends Airtable {
-  private static instance: CustomAirtable;
+  private static instance: CustomAirtable | null = null;
 
-  constructor(config: { apiKey: string }) {
+  constructor(config?: { apiKey?: string }) {
+    if (!config?.apiKey) {
+      super({ apiKey: 'dummy' }); // Provide a dummy key for SSR
+      return;
+    }
+    
     super(config);
     
-    // Only override fetch if _airtable exists
-    if ((this as any)._airtable) {
-      const originalFetch = (this as any)._airtable._fetchApi;
-      if (originalFetch) {
-        (this as any)._airtable._fetchApi = async (url: string, options: any = {}) => {
-          const { signal, ...restOptions } = options;
-          return originalFetch(url, restOptions);
-        };
+    try {
+      if ((this as any)._airtable) {
+        const originalFetch = (this as any)._airtable._fetchApi;
+        if (originalFetch) {
+          (this as any)._airtable._fetchApi = async (url: string, options: any = {}) => {
+            const { signal, ...restOptions } = options;
+            return originalFetch(url, restOptions);
+          };
+        }
       }
+    } catch (error) {
+      console.warn('Failed to override fetch method:', error);
     }
   }
 
   static getInstance(): CustomAirtable {
     if (!CustomAirtable.instance) {
-      if (!apiKey) {
-        throw new Error('Airtable API key is missing');
+      try {
+        CustomAirtable.instance = new CustomAirtable({ apiKey });
+        
+        // Only configure if we have a valid API key
+        if (apiKey) {
+          CustomAirtable.instance.configure({
+            apiKey: apiKey,
+            endpointUrl: 'https://api.airtable.com',
+            apiVersion: '0.1.0',
+            noRetryIfRateLimited: false,
+          });
+        }
+      } catch (error) {
+        console.warn('Failed to initialize Airtable instance:', error);
+        CustomAirtable.instance = new CustomAirtable(); // Create dummy instance
       }
-      CustomAirtable.instance = new CustomAirtable({ apiKey });
     }
     return CustomAirtable.instance;
   }
 }
 
-// Get the singleton instance with error handling
-const getAirtableInstance = () => {
+// Helper function to safely get Airtable instance
+const getAirtableInstance = (): CustomAirtable => {
   try {
     return CustomAirtable.getInstance();
   } catch (error) {
-    console.error('Failed to initialize Airtable:', error);
+    console.warn('Error getting Airtable instance:', error);
+    return new CustomAirtable();
+  }
+};
+
+// Helper function to safely get base
+const getBase = () => {
+  try {
+    const instance = getAirtableInstance();
+    return baseId ? instance.base(baseId) : null;
+  } catch (error) {
+    console.warn('Error getting Airtable base:', error);
     return null;
   }
 };
 
-const airtable = getAirtableInstance();
-
-// Only configure if airtable instance exists
-if (airtable) {
-  airtable.configure({
-    apiKey: apiKey,
-    endpointUrl: 'https://api.airtable.com',
-    apiVersion: '0.1.0',
-    noRetryIfRateLimited: false,
-  });
-}
-
-const base = airtable ? airtable.base(baseId as string) : null;
+// Initialize tables with error handling
+const base = getBase();
 const jobsTable = base ? base(jobsTableName) : null;
 const candidateReferralTable = base ? base(candidateReferralTableName) : null;
 const candidateRequestTable = base ? base(candidateRequestTableName) : null;
@@ -81,9 +101,15 @@ const safeAirtableOperation = async <T>(operation: () => Promise<T>): Promise<T>
   try {
     return await operation();
   } catch (error) {
-    if (error instanceof Error && error.message.includes('AbortSignal')) {
-      console.warn('Ignoring AbortSignal error, retrying operation...');
-      return await operation();
+    if (error instanceof Error) {
+      if (error.message.includes('AbortSignal')) {
+        console.warn('Ignoring AbortSignal error, retrying operation...');
+        return await operation();
+      }
+      if (error.message.includes('configure')) {
+        console.warn('Configuration error, returning empty result');
+        return [] as any;
+      }
     }
     throw error;
   }
@@ -194,98 +220,53 @@ export type JobApplication = {
 // Get all jobs with safe operation
 export const getAllJobs = async (): Promise<Job[]> => {
   return safeAirtableOperation(async () => {
-    if (!apiKey || !baseId) {
-      console.error('Missing required Airtable configuration');
-      throw new Error('Missing Airtable configuration');
-    }
-
-    const records = await jobsTable.select().all();
-    
-    if (!records || records.length === 0) {
-      console.log('No jobs found in Airtable');
+    if (!jobsTable) {
+      console.warn('Jobs table not available');
       return [];
     }
 
-    return records.map((record) => {
-      try {
-        // Helper function to safely get field values
-        const safeGet = (fieldName: string): any => {
-          try {
-            const value = record.get(fieldName);
-            
-            // Handle enterprise-restricted fields
-            if (value && typeof value === 'object' && 'state' in value) {
-              const restrictedValue = value as any;
-              if (restrictedValue.state === 'error' && restrictedValue.errorType === 'enterpriseRestricted') {
-                return restrictedValue.value || '';
-              }
-            }
-            
-            return value || '';
-          } catch (error) {
-            console.warn(`Error getting field ${fieldName}:`, error);
-            return '';
-          }
-        };
-
-        // Helper function to safely get array values
-        const safeGetArray = (fieldName: string): string[] => {
-          try {
-            const value = safeGet(fieldName);
-            
-            if (Array.isArray(value)) {
-              return value;
-            }
-            
-            if (typeof value === 'string') {
-              return value.split(',').map(item => item.trim());
-            }
-            
-            return [];
-          } catch (error) {
-            console.warn(`Error getting array field ${fieldName}:`, error);
-            return [];
-          }
-        };
-
-        // Map fields with better error handling
-        return {
-          id: record.id,
-          jobId: safeGet('Job ID') || record.id,
-          title: safeGet('Job Title') || 'Untitled Position',
-          company: safeGet('Company') || 'Company Name Not Available',
-          industry: safeGet('Industry (from Company)') || '',
-          function: safeGet('Function') || '',
-          location: safeGet('Location') || 'Location Not Specified',
-          salary: safeGet('Salary Range') || safeGet('Average Salary') || 'Salary Not Specified',
-          type: safeGet('Employment Type') || 'Type Not Specified',
-          skills: safeGetArray('Skills'),
-          description: safeGet('Job Description') || safeGet('Job Description Summary') || 'No description available',
-          responsibilities: safeGet('Responsibilities') ? safeGet('Responsibilities').split('\n') : [],
-          requirements: safeGet('Requirements') ? safeGet('Requirements').split('\n') : [],
-          benefits: [],
-          companyDescription: safeGet('Company Description (from Company)') || '',
-          postedDate: safeGet('Date Posted') || new Date().toISOString(),
-          applicationDeadline: safeGet('Application Deadline') || '',
-          category: safeGet('Category') || '',
-        };
-      } catch (fieldError) {
-        console.error('Error mapping record fields:', fieldError);
-        // Return a minimal valid job object instead of throwing
-        return {
-          id: record.id,
-          title: 'Error Loading Job Details',
-          company: 'Error',
-          industry: '',
-          function: '',
-          location: '',
-          salary: '',
-          type: '',
-          skills: [],
-          description: 'There was an error loading the job details. Please try again later.',
-        };
+    try {
+      const records = await jobsTable.select().all();
+      if (!records || records.length === 0) {
+        console.log('No jobs found in Airtable');
+        return [];
       }
-    });
+      
+      return records.map((record) => {
+        try {
+          return {
+            id: record.id,
+            jobId: record.get('Job ID') || record.id,
+            title: record.get('Job Title') || 'Untitled Position',
+            company: record.get('Company') || 'Company Name Not Available',
+            industry: record.get('Industry (from Company)') || '',
+            function: record.get('Function') || '',
+            location: record.get('Location') || '',
+            salary: record.get('Salary Range') || '',
+            type: record.get('Employment Type') || '',
+            skills: [],
+            description: record.get('Job Description') || '',
+          };
+        } catch (error) {
+          console.warn('Error mapping job record:', error);
+          return {
+            id: record.id,
+            title: 'Error Loading Job Details',
+            company: 'Error',
+            industry: '',
+            function: '',
+            location: '',
+            salary: '',
+            type: '',
+            skills: [],
+            description: 'There was an error loading the job details.',
+          };
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+      return [];
+    }
   });
 };
 
